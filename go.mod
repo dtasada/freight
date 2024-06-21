@@ -1,4 +1,4 @@
-module freight
+module github.com/dtasada/freight
 
 go 1.22.4
 
