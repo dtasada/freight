@@ -7,7 +7,7 @@ import (
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
-var sensitivity float32 = 2.5
+var sensitivity float32 = 3.5
 var gravity float32 = 9.81
 var fstr = fmt.Sprintf
 
@@ -18,8 +18,8 @@ var player Player = newPlayer(
 )
 var camera rl.Camera3D = rl.Camera3D{
 	Position:   player.pos,
-	Target:     rl.NewVector3(0.0, 20.0, 10.0), // the 10.0 should be arbitrary?
-	Up:         rl.NewVector3(0.0, 1.0, 0.0),   // Y is "up"
+	Target:     rl.NewVector3(0.0, 20.0, 10.0), // the Z:10.0 should be arbitrary?
+	Up:         rl.NewVector3(0.0, 1.0, 0.0),   // Asserts Y to be the vertical axis
 	Fovy:       100.0,
 	Projection: rl.CameraPerspective,
 }
@@ -39,19 +39,25 @@ func main() {
 	cube := rl.LoadModelFromMesh(rl.GenMeshCube(10, 24, 10))
 	defer rl.UnloadModel(cube)
 
-	shader := rl.LoadShader("./resources/shaders/lighting.vs", "./resources/shaders/lighting.fs")
-	defer rl.UnloadShader(shader)
+	lightShader := rl.LoadShader("./resources/shaders/lighting.vs", "./resources/shaders/lighting.fs")
+	defer rl.UnloadShader(lightShader)
 
-	*shader.Locs = rl.GetShaderLocation(shader, "viewPos")
-	ambientLoc := rl.GetShaderLocation(shader, "ambient")
+	grass := rl.LoadTexture("./resources/images/grass.png")
+	defer rl.UnloadTexture(grass)
+
+	grassShader := rl.LoadShader("./resources/shaders/base.vs", "./resources/shaders/grayscale.fs")
+	defer rl.UnloadShader(grassShader)
+
+	*lightShader.Locs = rl.GetShaderLocation(lightShader, "viewPos")
+	ambientLoc := rl.GetShaderLocation(lightShader, "ambient")
 	shaderValue := []float32{0.1, 0.1, 0.1, 1.0}
-	rl.SetShaderValue(shader, ambientLoc, shaderValue, rl.ShaderUniformVec4)
+	rl.SetShaderValue(lightShader, ambientLoc, shaderValue, rl.ShaderUniformVec4)
 
-	ground.Materials.Shader = shader
-	cube.Materials.Shader = shader
+	ground.Materials.Shader = lightShader
+	cube.Materials.Shader = lightShader
 
 	lights := []Light{
-		NewLight(LightTypePoint, rl.NewVector3(0, 2, 0), rl.NewVector3(20, 20, 20), rl.Yellow, shader),
+		NewLight(LightTypePoint, rl.NewVector3(0, 100, 0), rl.NewVector3(00, 00, 00), rl.Yellow, lightShader),
 	}
 
 	for !rl.WindowShouldClose() {
@@ -61,7 +67,7 @@ func main() {
 		/* Camera logic */
 		camera.Position = player.pos
 		camera.Position.Y = player.pos.Y + 2
-		camera.Up.Z = float32(math.Sin(player.rollFrame) * 1 / 8) // Camera roll wave
+		camera.Up.Z = float32(math.Sin(player.rollFrame) * player.rollAmp) // Camera roll wave
 		mouseNormal := rl.Vector2Normalize(rl.GetMouseDelta())
 		rl.UpdateCameraPro(
 			&camera,
@@ -74,8 +80,8 @@ func main() {
 			0.0, // No zoom
 		)
 
-		rl.SetShaderValue(shader,
-			*shader.Locs,
+		rl.SetShaderValue(lightShader,
+			*lightShader.Locs,
 			[]float32{camera.Position.X, camera.Position.Y, camera.Position.Z},
 			rl.ShaderUniformVec3,
 		)
@@ -88,9 +94,13 @@ func main() {
 		rl.BeginMode3D(camera)
 
 		/* 3D drawing here */
+		rl.BeginShaderMode(grassShader)
+		// rl.DrawModel(ground, rl.Vector3Zero(), 1, rl.Green)
+		rl.DrawTexture(grass, 0, 0, rl.White)
+		rl.EndShaderMode()
+
 		rl.DrawSphere(player.pos, player.radius, player.color)
-		rl.DrawModel(ground, rl.Vector3Zero(), 1, rl.Green)
-		rl.DrawModel(cube, rl.NewVector3(6, 0, 6), 1, rl.Black)
+		rl.DrawModel(cube, rl.NewVector3(6, 0, 6), 1, rl.DarkBlue)
 
 		for _, light := range lights {
 			light.UpdateValues()

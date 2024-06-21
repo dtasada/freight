@@ -16,7 +16,9 @@ type Player struct {
 	movementSpeed float32
 	jumpVel       float32
 	rollFrame     float64
-	rollSpeed     float64
+	rollStep      float64
+	rollAmp       float64
+	rollPeriod    float64
 	onGround      bool
 }
 
@@ -30,7 +32,9 @@ func newPlayer(radius float32, pos rl.Vector3, color rl.Color) Player {
 		movementSpeed: 10,
 		jumpVel:       350,
 		rollFrame:     0,
-		rollSpeed:     0.2,
+		rollStep:      0.2,
+		rollAmp:       1.0 / 8.0,
+		rollPeriod:    2 * math.Pi,
 		onGround:      false,
 	}
 }
@@ -60,7 +64,7 @@ func (self *Player) update() {
 	dz := float32(math.Sin(angle)) * self.movementSpeed * dt
 	dx := float32(math.Cos(angle)) * self.movementSpeed * dt
 	if rl.IsKeyDown(rl.KeyW) {
-		self.rollFrame += self.rollSpeed
+		self.rollFrame += self.rollStep
 
 		self.pos.Z += dz
 		self.pos.X += dx
@@ -68,21 +72,22 @@ func (self *Player) update() {
 		camera.Target.X += dx
 	} else {
 		if self.rollFrame > 0 {
-			self.rollFrame -= self.rollSpeed
+			self.rollFrame -= self.rollStep
 		} else {
-			self.rollFrame += self.rollSpeed
+			self.rollFrame += self.rollStep
 		}
 
-		if self.rollFrame > -self.rollSpeed || self.rollFrame < self.rollSpeed {
+		if self.rollFrame > -self.rollStep || self.rollFrame < self.rollStep {
 			self.rollFrame = 0
 		}
 	}
 
+	sideRoll := float64(4)
 	if rl.IsKeyDown(rl.KeyA) {
-		if self.rollFrame < 4 {
-			self.rollFrame += self.rollSpeed
+		if self.rollFrame < sideRoll {
+			self.rollFrame += self.rollStep
 		} else {
-			self.rollFrame = 4
+			self.rollFrame = sideRoll
 		}
 
 		// meth
@@ -98,10 +103,10 @@ func (self *Player) update() {
 		camera.Target.X -= dx
 	}
 	if rl.IsKeyDown(rl.KeyD) {
-		if self.rollFrame > -4 {
-			self.rollFrame -= self.rollSpeed
+		if self.rollFrame > -sideRoll {
+			self.rollFrame -= self.rollStep
 		} else {
-			self.rollFrame = -4
+			self.rollFrame = -sideRoll
 		}
 
 		// meth
@@ -119,6 +124,10 @@ func (self *Player) update() {
 		if rl.IsKeyDown(rl.KeyC) {
 			self.vel.Y -= self.jumpVel * dt
 		}
+	}
+
+	if self.rollFrame > self.rollPeriod {
+		self.rollFrame = self.rollFrame - math.Floor(self.rollFrame)
 	}
 
 }
