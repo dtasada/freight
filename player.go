@@ -16,6 +16,7 @@ type Player struct {
 	movementSpeed float32
 	jumpVel       float32
 	rollFrame     float64
+	rollSpeed     float64
 	onGround      bool
 }
 
@@ -29,6 +30,7 @@ func newPlayer(radius float32, pos rl.Vector3, color rl.Color) Player {
 		movementSpeed: 10,
 		jumpVel:       350,
 		rollFrame:     0,
+		rollSpeed:     0.2,
 		onGround:      false,
 	}
 }
@@ -42,7 +44,6 @@ func (self *Player) update() {
 	camera.Target.Y += self.vel.Y * dt
 	if self.pos.Y < 2 { // 2 is the "floor" and not 0 because eye level
 		self.pos.Y = 2
-		camera.Target.Y = 2
 		self.vel.Y *= 0 // -0.8
 		self.onGround = true
 	}
@@ -59,18 +60,30 @@ func (self *Player) update() {
 	dz := float32(math.Sin(angle)) * self.movementSpeed * dt
 	dx := float32(math.Cos(angle)) * self.movementSpeed * dt
 	if rl.IsKeyDown(rl.KeyW) {
-		self.rollFrame += 0.2
+		self.rollFrame += self.rollSpeed
 
 		self.pos.Z += dz
 		self.pos.X += dx
 		camera.Target.Z += dz
 		camera.Target.X += dx
 	} else {
-		self.rollFrame = 0
+		if self.rollFrame > 0 {
+			self.rollFrame -= self.rollSpeed
+		} else {
+			self.rollFrame += self.rollSpeed
+		}
+
+		if self.rollFrame > -self.rollSpeed || self.rollFrame < self.rollSpeed {
+			self.rollFrame = 0
+		}
 	}
 
 	if rl.IsKeyDown(rl.KeyA) {
-		self.rollFrame = 1
+		if self.rollFrame < 4 {
+			self.rollFrame += self.rollSpeed
+		} else {
+			self.rollFrame = 4
+		}
 
 		// meth
 		self.pos.X += dz
@@ -85,7 +98,11 @@ func (self *Player) update() {
 		camera.Target.X -= dx
 	}
 	if rl.IsKeyDown(rl.KeyD) {
-		self.rollFrame = -1
+		if self.rollFrame > -4 {
+			self.rollFrame -= self.rollSpeed
+		} else {
+			self.rollFrame = -4
+		}
 
 		// meth
 		self.pos.X -= dz
